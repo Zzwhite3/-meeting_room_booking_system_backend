@@ -7,6 +7,7 @@ import { UserModule } from './user/user.module';
 import { Role } from './user/entities/role.entity';
 import { Permission } from './user/entities/permission.entity';
 import { User } from './user/entities/user.entity';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -19,12 +20,13 @@ import { User } from './user/entities/user.entity';
       password: 'yindada',                     // 指定数据库密码为空（默认 MySQL 安装）
       database: 'meeting_room_booking_system', // 指定要连接的数据库名称
       entities: [Role, Permission, User],                     // 指定数据库实体列表
-      synchronize: true,                // 启用数据库同步功能，自动创建和更新表结构（生产环境不推荐）
+      synchronize: false,                // 启用数据库同步功能，自动创建和更新表结构（生产环境不推荐）
       logging: true,                    // 启用数据库操作日志记录，输出所有 SQL 查询语句
       poolSize: 10,                     // 指定数据库连接池的大小为 10，限制最大连接数
       connectorPackage: 'mysql2',       // 指定使用 mysql2 作为 MySQL 连接器包
     }),
     UserModule,
+    RedisModule,
   ],
   controllers: [AppController],
   providers: [AppService],
