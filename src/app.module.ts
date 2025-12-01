@@ -9,9 +9,14 @@ import { Permission } from './user/entities/permission.entity';
 import { User } from './user/entities/user.entity';
 import { RedisModule } from './redis/redis.module';
 import { EmailModule } from './email/email.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: 'src/.env',
+    }),
     // 调用 TypeOrmModule 的 forRoot 方法，初始化根数据库连接配置
     TypeOrmModule.forRoot({
       type: 'mysql',                    // 指定数据库类型为 MySQL
