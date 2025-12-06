@@ -30,4 +30,11 @@ export class UserController {
     });
     return '发送成功';
   }
+
+  // 初始化数据 dome
+  @Get("init-data")
+  async initData() {
+    await this.userService.initData()
+    return 'done'
+  }
 }

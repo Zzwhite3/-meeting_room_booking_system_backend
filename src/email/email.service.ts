@@ -7,7 +7,6 @@ export class EmailService {
     transporter: Transporter
     
     constructor(private readonly configService: ConfigService) {
-      console.log('是不是走的这里')
       this.transporter = createTransport({
           host: this.configService.get('nodemailer_host'),
           port: this.configService.get('nodemailer_port'),
