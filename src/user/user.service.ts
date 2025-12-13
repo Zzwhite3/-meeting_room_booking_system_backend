@@ -7,6 +7,8 @@ import { User } from './entities/user.entity';
 import { Role } from './entities/role.entity';
 import { Permission } from './entities/permission.entity';
 import { RedisService } from '../redis/redis.service'
+import { LoginUserDto } from './dto/login-user.dto'
+import { LoginUserVo } from './vo/login-user.vo'
 
 @Injectable()
 export class UserService {
@@ -97,5 +99,46 @@ export class UserService {
         await this.permissionRepository.save([permission1, permission2]);
         await this.roleRepository.save([role1, role2]);
         await this.userRepository.save([user1, user2]);
+    }
+
+    //login 接口
+    async login(loginUserDto: LoginUserDto, isAdmin: boolean){
+        const user = await this.userRepository.findOne({
+            where: {
+                name: loginUserDto.username,
+                isAdmin
+            },
+            relations: [ 'roles', 'roles.permissions']
+        });
+        if(!user){
+            throw new HttpException('用户不存在', HttpStatus.BAD_REQUEST)
+        }
+        if(user.password !== md5(loginUserDto.password)) {
+            throw new HttpException('密码错误', HttpStatus.BAD_REQUEST);
+        }
+
+        // 封装返回的数据vo
+        const vo = new LoginUserVo()
+        vo.userInfo = {
+            id: user.id,
+            name: user.name,
+            nickName: user.nickName,
+            email: user.email,
+            phoneNumber: user.phoneNumber,
+            headPic: user.headPic,
+            createTime: user.createTime.getTime(),
+            isFrozen: user.isFrozen,
+            isAdmin: user.isAdmin,
+            roles: user.roles.map(item => item.name),
+            permissions: user.roles.reduce((arr: Permission[], item) => {
+                item.permissions.forEach(permission => {
+                    if(arr.indexOf(permission) === -1) {
+                        arr.push(permission);
+                    }
+                })
+                return arr;
+            }, [])
+        }
+        return vo
     }
 }

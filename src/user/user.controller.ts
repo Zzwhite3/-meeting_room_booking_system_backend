@@ -1,6 +1,7 @@
 import { Controller, Post, Body, Inject, Get, Query } from '@nestjs/common';
 import { UserService } from './user.service';
 import { RegisterUserDto } from './dto/register-user.dto';
+import { LoginUserDto } from './dto/login-user.dto'
 import { EmailService } from '../email/email.service'
 import { RedisService } from '../redis/redis.service'
 @Controller('user')
@@ -36,5 +37,21 @@ export class UserController {
   async initData() {
     await this.userService.initData()
     return 'done'
+  }
+
+  // 普通用户登录
+  @Post('login')
+  async userLogin(@Body() loginUser: LoginUserDto){
+    const vo = await this.userService.login(loginUser, false);
+    console.log(vo,'登录返回的vo')
+    return vo;
+  }
+
+  // admin登录
+  @Post('admin/login')
+  async adminLogin(@Body() loginUser: LoginUserDto){
+    const vo = await this.userService.login(loginUser, true);
+    console.log(vo,'登录admin返回的vo')
+    return vo;
   }
 }
