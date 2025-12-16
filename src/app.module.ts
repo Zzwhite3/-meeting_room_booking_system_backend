@@ -11,6 +11,7 @@ import { RedisModule } from './redis/redis.module';
 import { EmailModule } from './email/email.module';
 import { ConfigModule } from '@nestjs/config'; // 配置迁全局配置
 import { ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -32,6 +33,18 @@ import { ConfigService } from '@nestjs/config';
           logging: true,                    // 启用数据库操作日志记录，输出所有 SQL 查询语句
           poolSize: 10,                     // 指定数据库连接池的大小为 10，限制最大连接数
           connectorPackage: 'mysql2',       // 指定使用 mysql2 作为 MySQL 连接器包
+        }
+      },
+      inject: [ConfigService]
+    }),
+    JwtModule.registerAsync({
+      global:true,
+      useFactory(configService: ConfigService) {
+        return {
+          secret: configService.get('jwt_secret'),
+          signOptions: {
+            expiresIn: '30m' // 默认 30 分钟
+          }
         }
       },
       inject: [ConfigService]

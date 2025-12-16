@@ -1,9 +1,11 @@
-import { Controller, Post, Body, Inject, Get, Query } from '@nestjs/common';
+import { Controller, Post, Body, Inject, Get, Query, UnauthorizedException } from '@nestjs/common';
 import { UserService } from './user.service';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { LoginUserDto } from './dto/login-user.dto'
 import { EmailService } from '../email/email.service'
 import { RedisService } from '../redis/redis.service'
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) { }
@@ -13,6 +15,13 @@ export class UserController {
 
   @Inject(RedisService)
   private redisService: RedisService;
+
+  @Inject(ConfigService)
+  private configService: ConfigService
+
+  @Inject(JwtService)
+  private jwtService: JwtService
+
 
   @Post('register')
   async register(@Body() registerUser: RegisterUserDto) {
@@ -41,17 +50,97 @@ export class UserController {
 
   // 普通用户登录
   @Post('login')
-  async userLogin(@Body() loginUser: LoginUserDto){
+  async userLogin(@Body() loginUser: LoginUserDto) {
     const vo = await this.userService.login(loginUser, false);
-    console.log(vo,'登录返回的vo')
+
+    vo.accessToken = this.jwtService.sign({
+      userId: vo.userInfo.id,
+      username: vo.userInfo.name,
+      roles: vo.userInfo.roles,
+      permissions: vo.userInfo.permissions
+    }, {
+      expiresIn: this.configService.get('jwt_access_token_expires_time') || '30m'
+    })
+
+    vo.refreshToken = this.jwtService.sign({
+      userId: vo.userInfo.id
+    }, {
+      expiresIn: this.configService.get('jwt_refresh_token_expres_time') || '7d'
+    });
+
+    console.log(vo, '登录返回的vo')
     return vo;
   }
 
   // admin登录
   @Post('admin/login')
-  async adminLogin(@Body() loginUser: LoginUserDto){
+  async adminLogin(@Body() loginUser: LoginUserDto) {
     const vo = await this.userService.login(loginUser, true);
-    console.log(vo,'登录admin返回的vo')
+    console.log(vo, '登录admin返回的vo')
     return vo;
+  }
+
+  // 刷新token
+  @Get('refresh')
+  async refresh(@Query('refreshToken') refreshToken: string) {
+    try {
+      const data = this.jwtService.verify(refreshToken);
+
+      const user = await this.userService.findUserById(data.userId, false);
+
+      const access_token = this.jwtService.sign({
+        userId: user.id,
+        username: user.username,
+        roles: user.roles,
+        permissions: user.permissions
+      }, {
+        expiresIn: this.configService.get('jwt_access_token_expires_time') || '30m'
+      });
+
+      const refresh_token = this.jwtService.sign({
+        userId: user.id
+      }, {
+        expiresIn: this.configService.get('jwt_refresh_token_expres_time') || '7d'
+      });
+      return {
+        access_token,
+        refresh_token
+      }
+    } catch (error) {
+      throw new UnauthorizedException('token 已失效，请重新登录')
+    }
+  }
+
+  // 刷新admin-token
+  @Get('admin/refresh')
+  async adminRefresh(@Query('refreshToken') refreshToken: string) {
+    try {
+      // 校验token
+      const data = this.jwtService.verify(refreshToken);
+      // 查找对饮 user
+      const user = await this.userService.findUserById(data.userId, true);
+      // 刷新token
+      const access_token = this.jwtService.sign({
+        userId: user.id,
+        username: user.username,
+        roles: user.roles,
+        permissions: user.permissions
+      }, {
+        expiresIn: this.configService.get('jwt_access_token_expires_time') || '30m'
+      });
+      //刷新 refresh-token
+      const refresh_token = this.jwtService.sign({
+        userId: user.id
+      }, {
+        expiresIn: this.configService.get('jwt_refresh_token_expres_time') || '7d'
+      });
+      // 重新返回token
+      return {
+        access_token,
+        refresh_token
+      }
+    } catch (e) {
+      throw new UnauthorizedException('token 已失效，请重新登录');
+    }
   }
 }
